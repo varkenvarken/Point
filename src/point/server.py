@@ -9,17 +9,16 @@ from .point import Point, PointCollection
 
 class Server(HTTPServer):
     def __init__(self, address, handler, dbfile, pwm):
+        self.pc = None
         if exists(dbfile):
             with open(dbfile) as f:
                 config = "\n".join(f.readlines())
                 try:
                     self.pc = PointCollection.loads(config, pwm=pwm)
                 except JSONDecodeError as e:
-                    raise ValueError(
-                        f"could not correctly read config file {e}"
-                    )
-        if self.server.pc is None:
-            self.server.pc = PointCollection(pwm=pwm)
+                    raise ValueError(f"could not correctly read config file {e}")
+        if self.pc is None:
+            self.pc = PointCollection(pwm=pwm)
         self.dbfile = dbfile
         super().__init__(address, handler)
 
