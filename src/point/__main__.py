@@ -46,6 +46,12 @@ if __name__ == "__main__":
         help="Use http instead of https",
     )
     argparser.add_argument(
+        "--secret",
+        type=str,
+        default="secret",
+        help="Filename of server name:password to use in basic authentication, default secret",
+    )
+    argparser.add_argument(
         "-m",
         "--mock",
         default=False,
@@ -64,7 +70,7 @@ if __name__ == "__main__":
         pwm = PCA9685(args.i2c, debug=False)
         pwm.setPWMFreq(50)
 
-    server = Server((args.server, args.port), RESTHandler, args.config, pwm)
+    server = Server((args.server, args.port), RESTHandler, args.config, pwm, args.secret)
     if not args.nossl:
         server.socket = ssl.wrap_socket (server.socket,
             keyfile=args.key,

@@ -1,4 +1,5 @@
 import json
+from base64 import b64decode
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from json.decoder import JSONDecodeError
 from os.path import exists
@@ -8,7 +9,7 @@ from .point import Point, PointCollection
 
 
 class Server(HTTPServer):
-    def __init__(self, address, handler, dbfile, pwm):
+    def __init__(self, address, handler, dbfile, pwm, secret):
         self.pc = None
         if exists(dbfile):
             with open(dbfile) as f:
@@ -17,6 +18,11 @@ class Server(HTTPServer):
                     self.pc = PointCollection.loads(config, pwm=pwm)
                 except JSONDecodeError as e:
                     raise ValueError(f"could not correctly read config file {e}")
+        if secret is not None and exists(secret):
+            with open(secret) as f:
+                self.secret = f.readline().strip()
+        else:
+            raise ValueError(f"could not correctly read file with secret {secret}")
         if self.pc is None:
             self.pc = PointCollection(pwm=pwm)
         self.dbfile = dbfile
@@ -28,7 +34,25 @@ class Server(HTTPServer):
 
 
 class RESTHandler(BaseHTTPRequestHandler):
+    def auth(self):
+        try:
+            auth = self.headers["Authorization"]
+            if auth is None:
+                raise KeyError
+            basic, msg = auth.split()
+            if basic != "Basic":
+                raise KeyError
+            if b64decode(msg).decode() == self.server.secret:
+                return True
+        except KeyError:
+            pass
+        self.send_response(401)
+        self.end_headers()
+        return False
+
     def do_GET(self):
+        if not self.auth():
+            return
         elements = unquote(self.path).split("/")
         if elements[1] == "points":
             self.send_response(200)
@@ -50,6 +74,8 @@ class RESTHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_PUT(self):
+        if not self.auth():
+            return
         commands = {
             "moveleft": 0,
             "moveright": 0,
@@ -112,6 +138,8 @@ class RESTHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
     def do_POST(self):
+        if not self.auth():
+            return
         elements = unquote(self.path).split("/")
         if elements[1] == "points" and elements[2] == "add":
             try:

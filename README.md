@@ -21,7 +21,7 @@ The synopsis for the program is
 
 ```
 usage: python -m point [-h] [-c CONFIG] [-s SERVER] [-p PORT] [--key KEY]
-                       [--cert CERT] [-m] [-i I2C]
+                       [--cert CERT] [-x] [--secret SECRET] [-m] [-i I2C]
 
 A REST server to control a PCA9685 based servo hat on a RaspberryPi
 
@@ -36,6 +36,9 @@ optional arguments:
   -p PORT, --port PORT  port the server will listen on, default 8080
   --key KEY             location of the key file, default key.pem
   --cert CERT           location of the key file, default cert.pem
+  -x, --nossl           Use http instead of https
+  --secret SECRET       Filename of server name:password to use in basic
+                        authentication, default secret
   -m, --mock            do not run an actual servo controller
   -i I2C, --i2c I2C     address of the controller on the i2c bus, default 0x40
 ```
@@ -107,12 +110,14 @@ only then could I succesfully compile python 3.8.9 from scratch.
 
 # Installing
 
-Installing requires installing the one external dependency, cloning the repository and generating a self signed certificate
+Installing requires installing the one external dependency, cloning the repository, generating a self signed certificate and storing a key:password combo:
+
 ```bash
 python -m pip install smbus2
 git clone https://github.com/varkenvarken/Point.git
 cd Point
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365
+echo key:secret > secret
 ```
 
 There is no setup script included for now, but at this point you could simply do
@@ -125,17 +130,17 @@ The sudo is only needed if your user does not have access to the i2c bus.
 (And of course i2c must be enabled and your servo hat installed :-)
 
 # Example
-After running the server for the first time, you could run the following commands to create and test a single point. We use https (from https://github.com/httpie/httpie) to test againts the server running with a self signed certificate (hence the `--verify no`).
+After running the server for the first time, you could run the following commands to create and test a single point. We use https (from https://github.com/httpie/httpie) to test against the server running with a self signed certificate (hence the `--verify no`). Note that every request needs to be authenticated.
 
 Tip: if you want to test the server or just make sure that new points will not actually issues commands on the i2c bus, run the server with the `--mock` option. It will then still populate and update the points database, but never try to move the servo.
 
 ```bash
- https --verify no GET '127.0.0.1:8080/points'
- https --verify no POST '127.0.0.1:8080/points/add/Point 1'
- https --verify no PUT '127.0.0.1:8080/point/Point 1/setleft/0.3'
- https --verify no PUT '127.0.0.1:8080/point/Point 1/setright/-0.3'
- https --verify no PUT '127.0.0.1:8080/point/Point 1/setspeed/0.5'
- https --verify no PUT '127.0.0.1:8080/point/Point 1/enable'
+ https --verify no -a key:secret GET '127.0.0.1:8080/points'
+ https --verify no -a key:secret POST '127.0.0.1:8080/points/add/Point 1'
+ https --verify no -a key:secret PUT '127.0.0.1:8080/point/Point 1/setleft/0.3'
+ https --verify no -a key:secret PUT '127.0.0.1:8080/point/Point 1/setright/-0.3'
+ https --verify no -a key:secret PUT '127.0.0.1:8080/point/Point 1/setspeed/0.5'
+ https --verify no -a key:secret PUT '127.0.0.1:8080/point/Point 1/enable'
 ```
 Every command returns a chunk of JSON data representing the state of the object last touched, so the last one will show
 
@@ -158,18 +163,17 @@ Every command returns a chunk of JSON data representing the state of the object 
 You could now move the new point (assuming you don't run the server with `--mock`)
 
 ```bash
-https --verify no PUT '127.0.0.1:8080/point/Point 1/left'
-https --verify no PUT '127.0.0.1:8080/point/Point 1/right'
+https --verify no -a key:secret PUT '127.0.0.1:8080/point/Point 1/left'
+https --verify no -a key:secret PUT '127.0.0.1:8080/point/Point 1/right'
 ``` 
 
 
 
 # Security
 
-The current setup is incredibly insecure: connections to the REST server use https but the is no user authentication!
+The current setup is insecure: The server is required to run with elevated privileges to access the i2c bus and for now we do this by running the server as root.
 
-And the server is required to run with elevated privileges to access the i2c bus.
-
+It might be a better idea to create a dedicated user for this and add it to the i2c group as documented here: https://lexruee.ch/setting-i2c-permissions-for-non-root-users.html
 
 # Acknowledgements
 
