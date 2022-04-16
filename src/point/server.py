@@ -18,8 +18,8 @@ class Server(HTTPServer):
                     raise ValueError(
                         f"could not correctly read config file {e}"
                     )
-        if self.pc is None:
-            self.pc = PointCollection(pwm=pwm)
+        if self.server.pc is None:
+            self.server.pc = PointCollection(pwm=pwm)
         self.dbfile = dbfile
         super().__init__(address, handler)
 
