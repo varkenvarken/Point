@@ -39,7 +39,7 @@ if __name__ == "__main__":
     if args.mock:
         pwm = MockPWM()
     else:
-        from PCA9685 import PCA9685
+        from pca9685 import PCA9685
 
         pwm = PCA9685(args.i2c, debug=False)
         pwm.setPWMFreq(50)
