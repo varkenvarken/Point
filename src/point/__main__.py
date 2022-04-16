@@ -19,7 +19,7 @@ if __name__ == "__main__":
         "-s",
         "--server",
         type=str,
-        default="127.0.0.1",
+        default="0.0.0.0",
         help="hostname or ip address the server will listen on",
     )
     argparser.add_argument(

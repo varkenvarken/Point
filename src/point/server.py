@@ -82,9 +82,11 @@ class RESTHandler(BaseHTTPRequestHandler):
                 point, cmd
             ):  # first check if it is in commands to prevent checking for an attribute instead of a method
                 method = getattr(point, cmd)
-            elif hasattr(point, cmd := "set" + elements[3]):
+            elif hasattr(point, "set" + elements[3]):
+                cmd = "set" + elements[3]
                 method = getattr(point, cmd)
-            elif hasattr(point, cmd := "move" + elements[3]):
+            elif hasattr(point, "move" + elements[3]):
+                cmd = "move" + elements[3]
                 method = getattr(point, cmd)
             else:
                 raise AttributeError(f"no such method [move|set]{elements[3]}")

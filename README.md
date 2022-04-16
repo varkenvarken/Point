@@ -11,7 +11,7 @@ The servo controller hat I use is from [Waveshare](https://www.waveshare.com/wik
 
 # Running
 
-To run a server that listens on http://127.0.0.1:8080 simply do
+To run a server that listens on http://0.0.0.0:8080 (i.e. all interfaces) simply do
 
 ```
 python -m point
@@ -57,6 +57,7 @@ POST /points/add/NAME
 add a new point. It must have unique name and will start in a disabled state.
 
 PUT /point/NAME/ACTION
+
 PUT /point/NAME/ATTRIBUTE/VALUE
 
 NAME is the name of a point.
