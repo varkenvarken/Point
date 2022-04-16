@@ -44,9 +44,9 @@ if __name__ == "__main__":
         pwm = PCA9685(args.i2c, debug=False)
         pwm.setPWMFreq(50)
 
-    server = Server((args.host, args.port), RESTHandler, args.config, pwm)
+    server = Server((args.server, args.port), RESTHandler, args.config, pwm)
     print(
-        f"Listening on {args.host}:{args.port}. JSON file used: {args.config}. {args.mock=}",
+        f"Listening on {args.server}:{args.port}. JSON file used: {args.config}. {args.mock=}",
         file=stderr,
         flush=True,
     )
