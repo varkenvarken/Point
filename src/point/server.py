@@ -72,8 +72,8 @@ class RESTHandler(BaseHTTPRequestHandler):
             and elements[2] in self.server.pc
             and (
                 elements[3] in commands
-                or "set" + elements[3] in commands
                 or "move" + elements[3] in commands
+                or "set" + elements[3] in commands
             )
         ):
             point = self.server.pc[elements[2]]
@@ -82,11 +82,11 @@ class RESTHandler(BaseHTTPRequestHandler):
                 point, cmd
             ):  # first check if it is in commands to prevent checking for an attribute instead of a method
                 method = getattr(point, cmd)
-            elif hasattr(point, "set" + elements[3]):
-                cmd = "set" + elements[3]
-                method = getattr(point, cmd)
             elif hasattr(point, "move" + elements[3]):
                 cmd = "move" + elements[3]
+                method = getattr(point, cmd)
+            elif hasattr(point, "set" + elements[3]):
+                cmd = "set" + elements[3]
                 method = getattr(point, cmd)
             else:
                 raise AttributeError(f"no such method [move|set]{elements[3]}")

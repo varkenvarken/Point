@@ -90,7 +90,9 @@ class Point:
 
     def move(self, position):
         if self.enabled:
-            p = ((position + 1.0) / 2.0) * 4095  # map [-1, 1] -> [0, 4095]
+            p = (
+                (position + 1.0) / 2.0
+            ) * 2000 + 500  # map [-1, 1] -> [500, 2500] i.e. 0.5 to 2.5 μs
             self.pwm.setServoPulse(self.port, p)
             self.current = position
 
