@@ -16,7 +16,7 @@ class Server(HTTPServer):
                     self.pc = PointCollection.loads(config, pwm=pwm)
                 except JSONDecodeError as e:
                     raise ValueError(
-                        f"could not correctly read config from {args.config} {e}"
+                        f"could not correctly read config file {e}"
                     )
         if self.pc is None:
             self.pc = PointCollection(pwm=pwm)

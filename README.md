@@ -84,6 +84,15 @@ ATTRIBUTE is
 - python 3.8.9
 - smbus2
 
+Note that I followed the installation instruction fro Python from https://itheo.tech/ultimate-python-installation-on-a-raspberry-pi-and-ubuntu-script but it wasn quite the ultimate answer to everything. 
+
+I had to install libssl-dev (to get pip to work) and libffi-dev (because otherwise smbus2 complained about missing a _ctypes module):
+```
+sudo apt-get install libssl-dev
+sudo apt-get install libffi-dev
+```
+only then could I succesfully compile python 3.8.9 from scratch.
+
 # Installing
 
 ```
@@ -100,4 +109,6 @@ sudo PYTHONPATH=./Point/src python -m point
 The sudo is only needed if your user does not have access to the i2c bus.
 (And of course i2c must be enabled and your servo hat installed :-)
 
+# Acknowledgements
 
+The PCA9685 module is largely based on the original one supplied with the Waveshare Servo hat. I replaced the smbus import for a smbus2 import (to make everything work with Python versions newer than 3.5)
