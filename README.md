@@ -110,6 +110,11 @@ sudo PYTHONPATH=./Point/src python -m point
 The sudo is only needed if your user does not have access to the i2c bus.
 (And of course i2c must be enabled and your servo hat installed :-)
 
+# Security
+
+The current setup is incredibly insecure: connections to the REST server are not encrypted and the server is required to run with elevated privileges to access the i2c bus.
+
+
 # Acknowledgements
 
 The PCA9685 module is largely based on the original one supplied with the Waveshare Servo hat. I replaced the smbus import for a smbus2 import (to make everything work with Python versions newer than 3.5)

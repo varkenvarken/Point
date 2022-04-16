@@ -90,11 +90,12 @@ class RESTHandler(BaseHTTPRequestHandler):
                 method = getattr(point, cmd)
             else:
                 raise AttributeError(f"no such method [move|set]{elements[3]}")
+            print(f">>>>>>>>>>>> {cmd=} {commands[cmd]}")
             try:
                 if commands[cmd] == 1:
                     value = float(elements[4])
                     method(value)
-                if commands[cmd] == "str":
+                elif commands[cmd] == "str":
                     value = elements[4]
                     method(value)
                 else:
