@@ -1,11 +1,25 @@
 import json
 from collections import OrderedDict
 from time import sleep, time
+from uuid import uuid4
+
+Position = {"left", "right", "mid"}
+PointType = {
+    "left",
+    "curved left",
+    "wye",
+    "right",
+    "curved right",
+    "double",
+    "triple",
+}
 
 
 class Point:
-    def __init__(self, port, pwm=None, default="left", pointtype="left"):
+    def __init__(self, port, name, pwm=None, default="left", pointtype="left"):
+        self.index = uuid4().hex
         self.setport(port)
+        self.name = name if name else f"Point on port {port}"
         self.setpwm(pwm)
         self.enabled = False
         self._mid = 0.0  # range [-1.0, 1.0]
@@ -18,6 +32,9 @@ class Point:
         self.setpointtype(pointtype)
         self.description = "A point"
 
+    def getindex(self):
+        return self.index
+
     def setport(self, port):
         p = int(port)
         if p < 0 or p > 15:
@@ -27,6 +44,12 @@ class Point:
     def getport(self):
         return self.port
 
+    def setname(self, name):
+        self.name = name
+
+    def getname(self):
+        return self.name
+
     def setpwm(self, pwm):
         if not hasattr(pwm, "setServoPulse"):
             raise ValueError("pwm object has no setServoPulse attribute")
@@ -35,9 +58,8 @@ class Point:
     # there is no getpwm
 
     def setdefault(self, default):
-        defaults = {"left", "mid", "right"}
-        if default not in defaults:
-            raise ValueError(f"default not one of {defaults}")
+        if default not in Position:
+            raise ValueError(f"default not one of {Position}")
         self.default = default
 
     def getdefault(self):
@@ -141,24 +163,15 @@ class Point:
         return self.pointtype
 
     def setpointtype(self, t):
-        types = {
-            "left",
-            "curved left",
-            "wye",
-            "right",
-            "curved right",
-            "double",
-            "triple",
-        }
-        if t not in types:
-            raise ValueError(f"type not one of {types}")
+        if t not in PointType:
+            raise ValueError(f"type not one of {PointType}")
         self.pointtype = t
 
     def __repr__(self):
-        return f"Point({self.port},{self.pwm=},default='{self.default}')"
+        return f'Point({self.port},"{self.name}",{self.pwm=},default="{self.default})'
 
     def dumps(self):
-        return f"""{{"port":{self.port}, "enabled":{"true" if self.enabled else "false"}, "current":{self.current:.5f}, "description":"{self.description}","_left":{self._left:.5f}, "_right":{self._right:.5f}, "_mid":{self._mid:.5f}, "speed":{self.speed:.5f}, "default":"{self.default}", "deltat":{self.deltat:.5f}, "pointtype":"{self.pointtype}"}}"""
+        return f"""{{"index": "{self.index}", "port":{self.port}, "name":"{self.name}", "enabled":{"true" if self.enabled else "false"}, "current":{self.current:.5f}, "description":"{self.description}","_left":{self._left:.5f}, "_right":{self._right:.5f}, "_mid":{self._mid:.5f}, "speed":{self.speed:.5f}, "default":"{self.default}", "deltat":{self.deltat:.5f}, "pointtype":"{self.pointtype}"}}"""
 
     @staticmethod
     def loads(s) -> "Point":
@@ -167,9 +180,13 @@ class Point:
 
     @staticmethod
     def loadd(d, pwm) -> "Point":
-        p = Point(d["port"], pwm)
+        p = Point(d["port"], d["name"], pwm)
         p.__dict__.update(d)
         return p
+
+    def save(self, d):
+        """Note that this function will update fields without any bounds checking!"""
+        self.__dict__.update(d)
 
 
 class PointCollection(OrderedDict):
@@ -191,48 +208,38 @@ class PointCollection(OrderedDict):
     def loads(s, pwm):
         d = json.loads(s)
         pc = PointCollection(pwm=pwm)
-        for name, point in d.items():
-            pc[name] = Point.loadd(point, pwm)
+        for index, point in d.items():
+            pc[index] = Point.loadd(point, pwm)
         return pc
 
-    def getfreeport(self):
+    def getfreeports(self):
         used = set(p.port for p in self.values())
         possible = set(range(16))
-        return (possible - used).pop()
+        return possible - used
+
+    def getfreeport(self):
+        return self.getfreeports().pop()
 
     def info(self):
         return json.dumps({"uptime": time() - self.start_time})
 
 
-if __name__ == "__main__":
-
-    class MockPWM:
-        def setServoPulse(self, port, pulse):
-            pulse = int(pulse)
-            print(f"setServoPulse {port=} {pulse=}")
-
-    a = Point(4, MockPWM())
-    a.setleft(-1)
-    assert a.getleft() == -1.0
-    a.setright(1)
-    assert a.getright() == 1.0
-
-    print(a.dumps())
-    b = Point.loads(a.dumps())
-    print(b.dumps())
-
-    pc = PointCollection(pwm=MockPWM())
-    pc["point 2"] = Point(2)
-    pc["point 3"] = Point(3)
-    d = pc.dumps()
-    print(d)
-    print(PointCollection.loads(d, pwm=MockPWM()).dumps())
-
-    print(f"moving left from {a.current=}")
-    start = time()
-    a.moveleft()
-    print(f"half swing to the left took {time()-start:.1f}s")
-    print(f"moving right from {a.current=}")
-    start = time()
-    a.moveright()
-    print(f"full swing to the right took {time()-start:.1f}s")
+class PointEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Point):
+            return {
+                "index": obj.index,
+                "port": obj.port,
+                "name": obj.name,
+                "enabled": obj.enabled,
+                "current": obj.current,
+                "description": obj.description,
+                "_left": obj._left,
+                "_right": obj._right,
+                "_mid": obj._mid,
+                "speed": obj.speed,
+                "default": obj.default,
+                "deltat": obj.deltat,
+                "pointtype": obj.pointtype,
+            }
+        return json.JSONEncoder.default(self, obj)
