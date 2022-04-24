@@ -164,12 +164,16 @@ class RESTHandler(BaseHTTPRequestHandler):
             return
         elements = unquote(self.path).split("/")
         if elements[1] == "point" and elements[2] in self.server.pc:
-            del self.server.pc[elements[2]]
-            self.server.writeDBfile()
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(self.server.pc.dumps().encode())
+            if len(self.server.pc) > 1:
+                del self.server.pc[elements[2]]
+                self.server.writeDBfile()
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(self.server.pc.dumps().encode())
+            else:
+                self.send_response(403, "Not allowed to delete last point in a collection")
+                self.end_headers()
         else:
             self.send_response(404)
             self.end_headers()

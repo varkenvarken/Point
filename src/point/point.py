@@ -25,7 +25,7 @@ class Point:
         self._mid = 0.0  # range [-1.0, 1.0]
         self._left = 0.0  # range [-1.0, 1.0]
         self._right = 0.0  # range [-1.0, 1.0]
-        self.speed = 2.0  # change in position per second when changing position (default is 1 seconds to travel from full left to right)
+        self.speed = 0.5  # change in position per second when changing position (default is 4 seconds to travel from full left to right)
         self.setdefault(default)  # left, right, mid
         self.current = 0.0  # range [-1.0, 1.0]
         self.deltat = 0.02  # seconds between micro steps
