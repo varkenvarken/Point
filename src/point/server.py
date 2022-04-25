@@ -1,15 +1,21 @@
 import json
 from base64 import b64decode
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from json.decoder import JSONDecodeError
-from os.path import exists
+from os import scandir
+from os.path import exists, join
+from re import compile
 from urllib.parse import unquote
+from uuid import uuid4
 
 from .point import Point, PointCollection, PointEncoder
 
+GUID = compile(r"^[a-f01-9]{32}$")
+
 
 class Server(HTTPServer):
-    def __init__(self, address, handler, dbfile, pwm, secret):
+    def __init__(self, address, handler, dbfile, pwm, secret, backupdir):
         self.pc = None
         if exists(dbfile):
             with open(dbfile) as f:
@@ -25,12 +31,42 @@ class Server(HTTPServer):
             raise ValueError(f"could not correctly read file with secret {secret}")
         if self.pc is None:
             self.pc = PointCollection(pwm=pwm)
+        if not exists(backupdir):
+            raise FileNotFoundError(f"backup directory does not exist {backupdir}")
         self.dbfile = dbfile
+        self.backupdir = backupdir
         super().__init__(address, handler)
 
     def writeDBfile(self):
         with open(self.dbfile, "w") as f:
             f.write(self.pc.dumps())
+
+    def known_backup(self, backupid):
+        if GUID.fullmatch(backupid):
+            return exists(join(self.backupdir, backupid))
+        return False
+
+    def list_backups(self):
+        backups = {}
+        with scandir(self.backupdir) as it:
+            for entry in it:
+                if GUID.fullmatch(entry.name) and entry.is_file():
+                    backups[entry.name] = datetime.fromtimestamp(
+                        entry.stat().st_mtime
+                    ).isoformat()
+        return json.dumps(backups)
+
+    def backup(self):
+        with open(join(self.backupdir, uuid4().hex), "w") as f:
+            f.write(self.pc.dumps())
+            return True
+        return False
+
+    def restore(self, backupid):
+        with open(join(self.backupdir, backupid)) as f:
+            config = "\n".join(f.readlines())
+        self.pc = PointCollection.loads(config, pwm=self.pc.pwm)
+        return True
 
 
 class RESTHandler(BaseHTTPRequestHandler):
@@ -71,11 +107,16 @@ class RESTHandler(BaseHTTPRequestHandler):
             }
             print(json.dumps(d, cls=PointEncoder))
             self.wfile.write(json.dumps(d, cls=PointEncoder).encode())
-        elif elements[1] == "server" and elements[2] in {"info"}:
+        elif elements[1] == "server" and elements[2] == "info":
             self.send_response(200)
             self.send_header("Content-type", "text/json")
             self.end_headers()
             self.wfile.write(getattr(self.server.pc, elements[2])().encode())
+        elif elements[1] == "server" and elements[2] == "backups":
+            self.send_response(200)
+            self.send_header("Content-type", "text/json")
+            self.end_headers()
+            self.wfile.write(self.server.list_backups().encode())
         else:
             self.send_response(404)
             self.end_headers()
@@ -155,6 +196,24 @@ class RESTHandler(BaseHTTPRequestHandler):
             }
             j = json.dumps(d, cls=PointEncoder)
             self.wfile.write(j.encode())
+        elif elements[1] == "server" and elements[2] == "backup":
+            if self.server.backup():
+                self.send_response(200)
+            else:
+                self.send_response(500)
+            self.end_headers()
+        elif (
+            elements[1] == "server"
+            and elements[2] == "restore"
+            and self.server.known_backup(elements[3])
+        ):
+            if self.server.backup():  # make a back up first
+                if self.server.restore(elements[3]):
+                    self.send_response(200)
+                    self.end_headers()
+                    return
+            self.send_response(500)
+            self.end_headers()
         else:
             self.send_response(404)
             self.end_headers()
@@ -172,7 +231,9 @@ class RESTHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(self.server.pc.dumps().encode())
             else:
-                self.send_response(403, "Not allowed to delete last point in a collection")
+                self.send_response(
+                    403, "Not allowed to delete last point in a collection"
+                )
                 self.end_headers()
         else:
             self.send_response(404)

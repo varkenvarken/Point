@@ -61,6 +61,9 @@ if __name__ == "__main__":
     argparser.add_argument(
         "-i", "--i2c", default=0x40, help="address of the controller on the i2c bus, default 0x40"
     )
+    argparser.add_argument(
+        "-b", "--backupdir", default="./backup", help="path to backup directory"
+    )
     args = argparser.parse_args()
     if args.mock:
         pwm = MockPWM()
@@ -70,7 +73,7 @@ if __name__ == "__main__":
         pwm = PCA9685(args.i2c, debug=False)
         pwm.setPWMFreq(50)
 
-    server = Server((args.server, args.port), RESTHandler, args.config, pwm, args.secret)
+    server = Server((args.server, args.port), RESTHandler, args.config, pwm, args.secret, args.backupdir)
     if not args.nossl:
         server.socket = ssl.wrap_socket (server.socket,
             keyfile=args.key,

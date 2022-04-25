@@ -125,6 +125,7 @@ git clone https://github.com/varkenvarken/Point.git
 cd Point
 openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365
 echo key:secret > secret
+mkdir backup
 ```
 
 There is no setup script included for now, but at this point you could simply do
