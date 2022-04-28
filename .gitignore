@@ -133,3 +133,4 @@ key.pem
 points.json
 secret
 backup/
+certificate/cert

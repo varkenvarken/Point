@@ -199,9 +199,12 @@ class RESTHandler(BaseHTTPRequestHandler):
         elif elements[1] == "server" and elements[2] == "backup":
             if self.server.backup():
                 self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write('{"error":"ok"}'.encode())
             else:
                 self.send_response(500)
-            self.end_headers()
+                self.end_headers()
         elif (
             elements[1] == "server"
             and elements[2] == "restore"
@@ -210,7 +213,9 @@ class RESTHandler(BaseHTTPRequestHandler):
             if self.server.backup():  # make a back up first
                 if self.server.restore(elements[3]):
                     self.send_response(200)
+                    self.send_header("Content-type", "application/json")
                     self.end_headers()
+                    self.wfile.write('{"error":"ok"}'.encode())
                     return
             self.send_response(500)
             self.end_headers()
