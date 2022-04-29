@@ -24,6 +24,9 @@ class Server(HTTPServer):
                     self.pc = PointCollection.loads(config, pwm=pwm)
                 except JSONDecodeError as e:
                     raise ValueError(f"could not correctly read config file {e}")
+                if len(self.pc) == 0:  # we started with an empty database
+                    point0 = Point(0, "Point at port 0", pwm=pwm)
+                    self.pc[point0.index] = point0
         if secret is not None and exists(secret):
             with open(secret) as f:
                 self.secret = f.readline().strip()
