@@ -17,6 +17,8 @@ GUID = compile(r"^[a-f01-9]{32}$")
 class Server(HTTPServer):
     def __init__(self, address, handler, dbfile, pwm, secret, backupdir):
         self.pc = None
+        self.dbfile = dbfile
+
         if exists(dbfile):
             with open(dbfile) as f:
                 config = "\n".join(f.readlines())
@@ -24,10 +26,11 @@ class Server(HTTPServer):
                     self.pc = PointCollection.loads(config, pwm=pwm)
                 except JSONDecodeError as e:
                     raise ValueError(f"could not correctly read config file {e}")
+
         else:  # we started with an empty database
             self.pc = PointCollection(pwm=pwm)
             point0 = Point(0, "Point at port 0", pwm=pwm)
-            self.pc[point0.index] = point0
+            self.pc[point0.getindex()] = point0
             self.writeDBfile()
 
         if secret is not None and exists(secret):
@@ -35,11 +38,9 @@ class Server(HTTPServer):
                 self.secret = f.readline().strip()
         else:
             raise ValueError(f"could not correctly read file with secret {secret}")
-        if self.pc is None:
-            self.pc = PointCollection(pwm=pwm)
+
         if not exists(backupdir):
             raise FileNotFoundError(f"backup directory does not exist {backupdir}")
-        self.dbfile = dbfile
         self.backupdir = backupdir
         super().__init__(address, handler)
 
