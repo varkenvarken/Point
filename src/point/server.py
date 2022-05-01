@@ -8,6 +8,8 @@ from os.path import exists, join
 from re import compile
 from urllib.parse import unquote
 from uuid import uuid4
+import time
+import email
 
 from .point import Point, PointCollection, PointEncoder
 
@@ -15,7 +17,7 @@ GUID = compile(r"^[a-f01-9]{32}$")
 
 
 class Server(HTTPServer):
-    def __init__(self, address, handler, dbfile, pwm, secret, backupdir):
+    def __init__(self, address, handler, dbfile, pwm, secret, backupdir, logfile):
         self.pc = None
         self.dbfile = dbfile
 
@@ -42,7 +44,9 @@ class Server(HTTPServer):
         if not exists(backupdir):
             raise FileNotFoundError(f"backup directory does not exist {backupdir}")
         self.backupdir = backupdir
+        self.logfile = open(logfile, "a", buffering=1)
         super().__init__(address, handler)
+        self.log_message("Server started")
 
     def writeDBfile(self):
         with open(self.dbfile, "w") as f:
@@ -66,14 +70,21 @@ class Server(HTTPServer):
     def backup(self):
         with open(join(self.backupdir, uuid4().hex), "w") as f:
             f.write(self.pc.dumps())
+            self.log_message("backup created")
             return True
-        return False
 
     def restore(self, backupid):
         with open(join(self.backupdir, backupid)) as f:
             config = "\n".join(f.readlines())
         self.pc = PointCollection.loads(config, pwm=self.pc.pwm)
+        self.log_message("backup restored")
         return True
+
+    def log_message(self, format, *args):
+        self.logfile.write(
+            "%s - - [%s] %s\n"
+            % ("-", email.utils.formatdate(time.time(), usegmt=True), format % args)
+        )
 
 
 class RESTHandler(BaseHTTPRequestHandler):
@@ -112,7 +123,6 @@ class RESTHandler(BaseHTTPRequestHandler):
                 "point": self.server.pc[elements[2]],
                 "freeports": list(self.server.pc.getfreeports()),
             }
-            print(json.dumps(d, cls=PointEncoder))
             self.wfile.write(json.dumps(d, cls=PointEncoder).encode())
         elif elements[1] == "server" and elements[2] == "info":
             self.send_response(200)
@@ -276,6 +286,24 @@ class RESTHandler(BaseHTTPRequestHandler):
         else:
             self.send_response(404)
             self.end_headers()
+
+    def log_message(self, format, *args):
+        """Log an arbitrary message.
+        This is used by all other logging functions.  Override
+        it if you have specific logging wishes.
+        The first argument, FORMAT, is a format string for the
+        message to be logged.  If the format string contains
+        any % escapes requiring parameters, they should be
+        specified as subsequent arguments (it's just like
+        printf!).
+        The client ip and current date/time are prefixed to
+        every message.
+        """
+
+        self.server.logfile.write(
+            "%s - - [%s] %s\n"
+            % (self.address_string(), self.log_date_time_string(), format % args)
+        )
 
 
 class MockPWM:

@@ -1,6 +1,6 @@
 import argparse
-from sys import stderr
 import ssl
+from sys import stderr
 
 from .server import MockPWM, RESTHandler, Server
 
@@ -24,7 +24,11 @@ if __name__ == "__main__":
         help="hostname or ip address the server will listen on, default 0.0.0.0",
     )
     argparser.add_argument(
-        "-p", "--port", type=int, default=8080, help="port the server will listen on, default 8080"
+        "-p",
+        "--port",
+        type=int,
+        default=8080,
+        help="port the server will listen on, default 8080",
     )
     argparser.add_argument(
         "--key",
@@ -59,10 +63,16 @@ if __name__ == "__main__":
         help="do not run an actual servo controller",
     )
     argparser.add_argument(
-        "-i", "--i2c", default=0x40, help="address of the controller on the i2c bus, default 0x40"
+        "-i",
+        "--i2c",
+        default=0x40,
+        help="address of the controller on the i2c bus, default 0x40",
     )
     argparser.add_argument(
         "-b", "--backupdir", default="./backup", help="path to backup directory"
+    )
+    argparser.add_argument(
+        "-l", "--log", default="./points.log", help="path to log file"
     )
     args = argparser.parse_args()
     if args.mock:
@@ -73,11 +83,19 @@ if __name__ == "__main__":
         pwm = PCA9685(args.i2c, debug=False)
         pwm.setPWMFreq(50)
 
-    server = Server((args.server, args.port), RESTHandler, args.config, pwm, args.secret, args.backupdir)
+    server = Server(
+        (args.server, args.port),
+        RESTHandler,
+        args.config,
+        pwm,
+        args.secret,
+        args.backupdir,
+        args.log,
+    )
     if not args.nossl:
-        server.socket = ssl.wrap_socket (server.socket,
-            keyfile=args.key,
-            certfile=args.cert, server_side=True)
+        server.socket = ssl.wrap_socket(
+            server.socket, keyfile=args.key, certfile=args.cert, server_side=True
+        )
 
     print(
         f"Listening on {args.server}:{args.port}. JSON file used: {args.config}. {args.mock=}",
