@@ -184,6 +184,67 @@ https --verify no -a key:secret PUT '127.0.0.1:8080/point/bd560...0c32a/left'
 https --verify no -a key:secret PUT '127.0.0.1:8080/point/bd560...0c32a/right'
 ``` 
 
+# Running as a daemon
+On my Raspberry Pi with Ubuntu, I created the following file */home/michel/bin/point-daemon*
+
+```bash
+#!/bin/bash
+PYTHONPATH=/home/michel/Point/src python -m point --config /home/michel/Point/points.json --secret /home/michel/Point/secret --backup /home/michel/Point/backup --key /home/michel/Certificates/michelanders.nl.key  --cert /home/michel/Certificates/michelanders.nl.crt --log /var/log/points.log
+```
+That is one long line gathering all relevant options and a proper PYTHONPATH.
+
+I then created the file */lib/systemd/system/point-daemon.service*
+
+```ini
+[Unit]
+Description=Point controller service
+After=network.target network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+Restart=always
+ExecStartPre=/bin/mkdir -p /var/run/point-daemon
+PIDFile=/var/run/point-deamon/service.pid
+ExecStart=/home/michel/bin/point-daemon
+
+[Install]
+WantedBy=multi-user.target
+```
+
+I then restarted systemd, enabled this service (so it will start at reboot) and started it
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable point-daemon.service
+sudo systemctl start point-daemon.service
+```
+
+You can verify the status with `sudo systemctl status point-daemon.service`
+It will show something like:
+```
+● point-daemon.service - Point controller service
+   Loaded: loaded (/lib/systemd/system/point-daemon.service; enabled; vendor preset: enabled)
+   Active: active (running) since Sun 2022-05-01 17:06:16 CEST; 9min ago
+  Process: 1735 ExecStartPre=/bin/mkdir -p /var/run/point-daemon (code=exited, status=0/SUCCESS)
+ Main PID: 1738 (point-daemon)
+    Tasks: 2 (limit: 4915)
+   CGroup: /system.slice/point-daemon.service
+           ├─1738 /bin/bash /home/michel/bin/point-daemon
+           └─1740 python -m point --config /home/michel/Point/points.json --secret /home/michel/Point/secret --backup /home/michel/Point/backup --key 
+
+May 01 17:06:16 raspberrypi systemd[1]: Starting Point controller service...
+May 01 17:06:16 raspberrypi systemd[1]: Started Point controller service.
+May 01 17:06:16 raspberrypi point-daemon[1738]: Listening on 0.0.0.0:8080. JSON file used: /home/michel/Point/points.json. args.mock=False
+```
+
+Note that only things written to *stderr* will show up in the daemon log. You can inspect that too, with `sudo journalctl -u point-daemon`
+
+The access log is written to the logfile specified with *--log*.
+
+Note that after reboot it may take a few seconds before the service is accessible. Even though the daemon will show up in the process list and will be listening on 0.0.0.0, the actual network stack may need longer to fully setup.
+
 # Security
 
 The current setup is insecure: The server is required to run with elevated privileges to access the i2c bus and for now we do this by running the server as root.
