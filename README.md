@@ -10,6 +10,25 @@ The server can be run even without a PCA9685 controller present on the i2c bus, 
 The servo controller hat I use is from [Waveshare](https://www.waveshare.com/wiki/Servo_Driver_HAT) and it is available from various RaspberryPi resellers. I guess it will work with any PCA9685 based controller (which is actually a programmable LED driver) but as always, anything you do with the software is completely at your own risk. 
 
 An Android app to interact with the REST server is provided as well and is available in a [separate project](https://github.com/varkenvarken/PointApp)
+
+# Table of contents
+
+[Running](#Running)
+
+[REST interface](#REST-interface)
+
+[Dependencies](#Dependencies)
+
+[Installing](#Installing)
+
+[Example](#Example)
+
+[Running as a daemon](#Running-as-a-daemon)
+
+[Security](#Security)
+
+[Acknowledgements](#Acknowledgements)
+
 # Running
 
 To run a server that listens on https://0.0.0.0:8080 (i.e. all interfaces on localhost) simply do
